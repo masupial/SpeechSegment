@@ -1,4 +1,5 @@
 from scipy.io import wavfile
+import matplotlib.pyplot as plt
 
 def read_wav_file(file_name):
     '''
@@ -6,6 +7,13 @@ def read_wav_file(file_name):
     '''
 
     sample_rate, data = wavfile.read(file_name)
+
+    # optional code for plotting of the signal
+    plt.figure(1)
+    plt.title('speech wave')
+    plt.plot(data)
+    plt.show()
+
 
     return sample_rate, data
 
