@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from scipy import signal
 from ReadData import read_wav_file
 from sklearn.cluster import KMeans
+from sklearn.cluster import SpectralClustering
+from sklearn.cluster import AgglomerativeClustering
 from sklearn.decomposition import IncrementalPCA
 
 def plot_data_with_spectrogram(data,sample_rate):
@@ -43,20 +45,38 @@ def identify_spectrogram_clusters_1(data,sample_rate,clusters=2):
 
     return kmeans.labels_,bins
 
+def identify_spectrogram_clusters_1p2(data,sample_rate,clusters=2):
+    '''
+    trying other clustering on the the vertical lines again
+    '''
+
+    # hacked the plt.specgram to get the specrogram
+    Pxx, freqs, bins, im = plt.specgram(data, Fs=sample_rate)
+
+    # split the Pxx into two clusters
+    # clusterModel = SpectralClustering(n_clusters=2, random_state=0).fit(np.transpose(Pxx))
+
+    clusterModel = AgglomerativeClustering(n_clusters=2).fit(np.transpose(Pxx))
+
+    return clusterModel.labels_,bins
+
 def identify_spectrogram_clusters_2(data,sample_rate,clusters=2):
     '''
     trying k means clustering of derived features
-    derived from : extracted version of the vertical lines
+    derived from : low dim version of the vertical lines
     '''
 
     # hacked the plt.specgram to get the spectrogram
     Pxx, freqs, bins, im = plt.specgram(data, Fs=sample_rate)
 
     # extract Pxx into some lower dimension
-    # first, let's sum of squares
-    spectral_energy_feature = np.sum(Pxx**2, axis=0)
+    # let's use various norms as features
+    # np.ones((spectral_energy_feature.shape[0]))
+    spectral_energy_feature = np.sum(Pxx**2, axis=0) # 2-norm
     #hack: add an extra meaningless dimension to this to have a smooth run
-    spectral_energy_feature = np.stack((np.ones((spectral_energy_feature.shape[0])),spectral_energy_feature),axis=1)
+    spectral_sum_feature = np.sum(Pxx, axis=0) # 1-norm
+    spectral_max_feature = np.max(Pxx, axis=0) # infinity norm
+    spectral_feature = np.stack((spectral_sum_feature,spectral_energy_feature,spectral_max_feature),axis=1)
 
     # pca?, maybe later!
     #ipca = IncrementalPCA(n_components=2, batch_size=3)
@@ -64,7 +84,7 @@ def identify_spectrogram_clusters_2(data,sample_rate,clusters=2):
     #Pxx_transform = ipca.transform(Pxx)
 
     # split the Pxx into two clusters
-    kmeans = KMeans(n_clusters=2, random_state=0).fit(spectral_energy_feature)
+    kmeans = KMeans(n_clusters=2, random_state=0).fit(spectral_feature)
 
     return kmeans.labels_,bins
 
@@ -73,11 +93,14 @@ if __name__ == '__main__':
     sample_rate, data = read_wav_file('harvard_data/OSR_us_000_0010_8k.wav')
     number_samples = data.shape[0]
 
-    # plotting the spectrogram on the first few samples
-    ax_plot = plot_data_with_spectrogram(data[1:np.int(number_samples/5)],sample_rate)
+    # on the first few samples
+    data= data[1:np.int(number_samples / 5)]
+
+    # plotting the spectrogram
+    ax_plot = plot_data_with_spectrogram(data,sample_rate)
 
     # identifying the clusters
-    labels, bins = identify_spectrogram_clusters_2(data[1:np.int(number_samples / 5)], sample_rate)
+    labels, bins = identify_spectrogram_clusters_2(data, sample_rate)
     # print(labels)
     for ii in range(labels.shape[0]):
         if labels[ii] == 1:
